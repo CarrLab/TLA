@@ -19,4 +19,4 @@ echo "TLA_points_setup_sum: Processing ($ncases) samples in study <$1>"
 
 # run the setup summary
 mkdir -p log
-sums=$(sbatch --parsable --export=STUDY=$1,CATEGORY=$2 src/tla_points_setup_sum_sbatch.sh)
+sums=$(sbatch --parsable --export=STUDY=$1 src/tla_points_setup_sum_sbatch.sh)

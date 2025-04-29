@@ -1,5 +1,17 @@
 #!/bin/bash
 
+graph=""
+if [[ "$2" == "--graph" || "$3" == "--graph"]] 
+then
+  graph="--graph"
+fi
+
+redo=""
+if [[ "$2" == "--redo" || "$3" == "--redo"]] 
+then
+  redo="--redo"
+fi
+
 IFS=','
 
 # get samples_file name and determine number of samples to be processed
@@ -15,9 +27,9 @@ conda activate tlaenv
 
 # run all samples in study
 for (( I=0; I<$ncases; I++ ))
-    do
-    	python src/tla_points_ssh.py $1 $I $2 $3
-    done
+do
+    python src/tla_points_ssh.py $1 $I $graph $redo
+done
 
 
 

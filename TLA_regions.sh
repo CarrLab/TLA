@@ -128,10 +128,10 @@ case $ARG1 in
     sum) # sum module
         case $slurm in
       	   TRUE) # slurm run
-              	 source $SRC"tla_regions_sum_slurm.sh" $ARG2 $graph $redo
+              	 source $SRC"tla_regions_sum_slurm.sh" $ARG2 
                  exit;;
        	   FALSE) # serial run
-               	 source $SRC"tla_regions_sum_loop.sh" $ARG2 $graph $redo
+               	 source $SRC"tla_regions_sum_loop.sh" $ARG2
                  exit;;
     	esac
     	;;

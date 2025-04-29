@@ -133,10 +133,10 @@ case $ARG1 in
     setup_sum) # setup_sum module
         case $slurm in
       	   TRUE) # slurm run
-              	 source $SRC"tla_points_setup_sum_slurm.sh" $ARG2 $graph $redo
+              	 source $SRC"tla_points_setup_sum_slurm.sh" $ARG2
                  exit;;
        	   FALSE) # serial run
-               	 source $SRC"tla_points_setup_sum_loop.sh" $ARG2 $graph $redo
+               	 source $SRC"tla_points_setup_sum_loop.sh" $ARG2
                  exit;;
     	esac
     	;;
@@ -155,10 +155,10 @@ case $ARG1 in
     run_sum) # run_sum module
         case $slurm in
       	   TRUE) # slurm run
-              	 source $SRC"tla_points_run_sum_slurm.sh" $ARG2 $graph $redo
+              	 source $SRC"tla_points_run_sum_slurm.sh" $ARG2
                  exit;;
        	   FALSE) # serial run
-               	 source $SRC"tla_points_run_sum_loop.sh" $ARG2 $graph $redo
+               	 source $SRC"tla_points_run_sum_loop.sh" $ARG2
                  exit;;
     	esac
     	;;

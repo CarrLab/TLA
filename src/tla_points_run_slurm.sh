@@ -21,6 +21,19 @@
 ##      ARG2: graph option (i.e. "--graph" or "") 
 ##      ARG3: redo option (i.e. "--redo" or "") 
 
+
+graph=""
+if [[ "$2" == "--graph" || "$3" == "--graph"]] 
+then
+  graph="--graph"
+fi
+
+redo=""
+if [[ "$2" == "--redo" || "$3" == "--redo"]] 
+then
+  redo="--redo"
+fi
+
 IFS=','
 
 # function to count the number of lines in a file
@@ -50,36 +63,58 @@ then
     mkdir -p log
     # run all samples in a slum array
     # >> use {$2, $3 = --graph, --redo} for optional graphing or redoing calculations 	
-    steps=$(sbatch --array=1-$ncases --parsable --export=STUDY=$1,GRAPH=$2,REDO=$3 src/tla_points_run_sbatch.sh)
+    steps=$(sbatch --array=1-$ncases --parsable --export=STUDY=$1,GRAPH=$graph,REDO=$redo src/tla_points_run_sbatch.sh)
 
 else
     # generate a list of samples not yet processed
     echo "Found some previously processed samples..."
-    grep -w -vFf $done_samples $samples_files > $sub_samples 
-    ncases=$(($(numlines $sub_samples)))
-
-    if [ $ncases -eq 0 ]
-    then
-        ncases=$(($(numlines $samples_files)))
-        echo "TLA_points_run: All ($ncases) samples are already processed in study <$1>"     
-    else
-        echo "TLA_points_run: Processing remaining ($ncases) samples in study <$1>" 
-
-	# create a temporary parameter file pointing to sub-sample list
-        studtbl=${1/'.csv'/'_sub.csv'}    
-        cp $1 $studtbl	
-        sed -Ei "2 s/[^,]*/run_sub_samples.csv/3" $studtbl
-
-        # run all (undone) samples in a slum array
-        mkdir -p log
-        # >> use {$2, $3 = --graph, --redo} for optional graphing or redoing calculations 	
-        steps=$(sbatch --array=1-$ncases --parsable --export=STUDY=$studtbl,GRAPH=$2,REDO=$3 src/tla_points_run_sbatch.sh)
-
-        # remove temporary file
-        rm $studtbl
-    fi
     
-    # remove temporary file
-    rm $sub_samples
+    if [[ -z "$redo" ]] 
+    then
+        # continue processing only cases not yet finished
+        grep -w -vFf $done_samples $samples_files > $sub_samples 
+        ncases=$(($(numlines $sub_samples)))
+    
+        if [ $ncases -eq 0 ]
+        then
+            ncases=$(($(numlines $samples_files)))
+            echo "TLA_points_run: All ($ncases) samples are already processed in study <$1>"     
+        else
+            echo "TLA_points_run: Processing remaining ($ncases) samples in study <$1>" 
+    
+            # create a temporary parameter file pointing to sub-sample list
+            studtbl=${1/'.csv'/'_sub.csv'}    
+            cp $1 $studtbl	
+            sed -Ei "2 s/[^,]*/run_sub_samples.csv/3" $studtbl
+    
+            # run all (undone) samples in a slum array
+            mkdir -p log
+            # >> use {$2, $3 = --graph, --redo} for optional graphing or redoing calculations 	
+            steps=$(sbatch --array=1-$ncases --parsable --export=STUDY=$studtbl,GRAPH=$graph,REDO=$redo src/tla_points_run_sbatch.sh)
+    
+            # remove temporary file
+            rm $studtbl
+        fi
+        
+        # remove temporary file
+        rm $sub_samples
+        
+    else
+        # redo all samples
+        
+        # remove temporary files
+        rm $done_samples
+        
+        echo "Redoing processing for all the samples..."
+        ncases=$(($(numlines $samples_files)))
+        studtbl=$1
+
+        echo "TLA_points_run: Processing ($ncases) samples in study <$1>" 
+        mkdir -p log
+        # run all samples in a slum array
+        # >> use {$2, $3 = --graph, --redo} for optional graphing or redoing calculations 	
+        steps=$(sbatch --array=1-$ncases --parsable --export=STUDY=$1,GRAPH=$graph,REDO=$redo src/tla_points_run_sbatch.sh)
+        
+    fi
 fi
 
