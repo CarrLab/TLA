@@ -26,7 +26,7 @@ from ast import literal_eval
 
 from argparse import ArgumentParser
 
-from tla_functions import printProgressBar, plotRGB, mkdirs
+from tla_functions import printProgressBar, plotRGB, mkdirs, filexists
 # from itertools import combinations, permutations, product
 
     
@@ -34,7 +34,10 @@ Image.MAX_IMAGE_PIXELS = 600000000
 
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:10240"
 
-__version__  = "2.0.0"
+#IMGEXT = '.png'
+IMGEXT = '.pdf'
+
+__version__  = "2.0.2"
 
 # %% Private classes
     
@@ -42,63 +45,56 @@ class Study:
     
     def __init__(self, study, main_pth):
         
+        from tla_functions import tofloat, toint
+        
         # loads arguments for this study
         self.name = study['name']
-        f = os.path.join(main_pth, study['data_path'])
+        f = filexists(os.path.join(main_pth, study['data_path']))
         if not os.path.exists(f):
             print("ERROR: data folder " + f + " does not exist!")
-            print("... Please run << TLA >> for this study!")
+            print("... Please run << TLA setup >> with this study!")
             sys.exit()
         self.dat_pth = f
-              
+        
+        # load classes
         f = os.path.join(self.dat_pth, study['name'] + '_classes.csv')
-        if not os.path.exists(f):
-            print("ERROR: classes file " + f + " does not exist!")
-            sys.exit()
-        self.classes = getLMEclasses(f)
-             
+        self.classes = loadClasses(f)
+        
         # list of samples is read from 'tla_sub_samples.csv' if it exist, 
         # otherwise reads directly from the original list for the study 
         f = os.path.join(self.dat_pth, 'ssh_sub_samples.csv')
         if not os.path.exists(f):
-            f = os.path.join(self.dat_pth, study['name'] + '_samples.csv')
-            if not os.path.exists(f):
-                print("ERROR: samples file " + f + " does not exist!")
-                sys.exit()
-        self.samples = pd.read_csv(f)  
+            f = filexists(os.path.join(self.dat_pth, 
+                                       study['name'] + '_samples.csv'))
+        self.samples = pd.read_csv(f)    
         
         # list of processed samples
         self.done_list = os.path.join(self.dat_pth, 'ssh_done_samples.csv')
+        
         # scale parameters
-        self.factor = np.float32(1.0)
+        self.factor = tofloat(1.0)
         if 'factor' in study:
             self.factor = study['factor']
-        self.scale = np.float32(study['scale']/self.factor)
+        self.scale = tofloat(study['scale']/self.factor)
         self.units = study['units']
         
         # the size of quadrats and subquadrats
-        aux = 4*np.ceil((study['binsiz']/self.scale)/4)
-        self.binsiz = np.rint(aux).astype('int32')
-        self.subbinsiz = np.rint(self.binsiz/4).astype('int32')
+        aux = np.rint(10*np.ceil((study['binsiz']/self.scale)/10))
+        self.binsiz = toint(aux)
         
-        # bandwidth size for convolutions is half the quadrat size
-        self.kernel = np.rint(self.binsiz/2).astype('int32')
-        self.subkernel = np.rint(self.subbinsiz/2).astype('int32')
+        # bandwidth size for convolutions
+        self.bw = toint(np.rint(self.binsiz/20))
         
         # creates samples table for output
         self.samples_out = pd.DataFrame()
         
         # analyses table
-        df = pd.read_csv(os.path.join(self.dat_pth,
-                                      self.name + '_analyses.csv'),
+        self.analyses = pd.read_csv(os.path.join(self.dat_pth,
+                                                 self.name + '_analyses.csv'),
                                     converters={'comps': literal_eval}) 
-        # drop Attraction Enrichment Functions score from analysis
-        # (NEED TO FIX A BUG IN THE CALCULATION)
-        df.loc[df['name']== 'aefunc', 'drop'] = True
-        
-        self.analyses = df.loc[~df['drop']]
         self.donefacts = self.analyses['name'].tolist()
       
+        
     def getSample(self, i):
         
         # get sample entry from samples df
@@ -149,10 +145,9 @@ class Landscape:
         self.ncells = len(self.cell_data)
         
         # general attributes
+        self.num_cells = sample.num_cells
         self.binsiz = study.binsiz
-        self.subbinsiz = study.subbinsiz 
-        self.kernel =  study.kernel
-        self.subkernel = study.subkernel
+        self.bw =  study.bw
         self.scale = study.scale
         self.units = study.units
         
@@ -170,10 +165,9 @@ class Landscape:
         # more raster attributes
         self.mask_file = os.path.join(pth, self.sid + '_mask.npz')
         self.lme_file = os.path.join(pth, self.sid + '_lme.npz')  
-        self.abumix_file = os.path.join(dat_pth, sample['abumix_file'])
+        self.abumix_file = os.path.join(pth, self.sid + '_abumix.npz')
         self.coloc_file = os.path.join(pth, self.sid + '_coloc.npz')  
         self.nndist_file = os.path.join(pth, self.sid + '_nndist.npz') 
-        self.aefunc_file = os.path.join(pth, self.sid + '_aefunc.npz')  
         self.rhfunc_file = os.path.join(pth, self.sid + '_rhfunc.npz')  
         self.geordG_file = os.path.join(pth, self.sid + '_geordG.npz')  
        
@@ -230,7 +224,7 @@ class Landscape:
         out_pth = mkdirs(os.path.join(self.out_pth, 'coloc'))
         
         tab = sshComps(self.sid, colocarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'coloc', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth, do_plots, subset = True)
@@ -256,7 +250,7 @@ class Landscape:
         out_pth = mkdirs(os.path.join(self.out_pth, 'nndist'))
                   
         _ = sshComps(self.sid, nndistarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'nndist', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth, do_plots, subset = True)
@@ -280,7 +274,7 @@ class Landscape:
         out_pth = mkdirs(os.path.join(self.out_pth, 'rhfunc'))
                   
         _ = sshComps(self.sid, rhfuncarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'rhfunc', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth, do_plots, subset = True)
@@ -293,25 +287,25 @@ class Landscape:
         cps = df.loc[df['name'] == 'geordG']['comps'].values[0]
         comps = [getIndex(c, self.classes) for c in cps]
         
-        # loads nndist raster image
+        # loads raster image
         f = self.geordG_file
         if not os.path.exists(f):
             print("ERROR: raster file " + f + " does not exist!")
             sys.exit()
         aux = np.load(f)
-        geordGarr = np.float64(aux['geordG'])
-        hotarr = np.float32(aux['hot'])
+        geordGarr = np.float64(aux['geordG'][:,:,:,0])
+        hotarr = np.float32(aux['hot'][:,:,:,0])
         
         out_pth = mkdirs(os.path.join(self.out_pth, 'geordG'))
                   
         _ = sshCases(self.sid, geordGarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'geordG', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth, do_plots, subset = True)
         
         _ = sshCases(self.sid, hotarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'hot', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth,  do_plots, subset = True)
@@ -334,7 +328,7 @@ class Landscape:
         out_pth = mkdirs(os.path.join(self.out_pth, 'abundance'))
                   
         _ = sshCases(self.sid, abuarr, self.imshape, 
-                     self.scale, self.units, self.subbinsiz,
+                     self.scale, self.units, self.binsiz,
                      'abu', comps, self.classes, 
                      self.lmes, self.blobs, strata, 
                      out_pth, do_plots, subset = True)
@@ -366,30 +360,29 @@ def compIDX(comps, classes):
     return(comps_idx)
     
 
-# %%%% LME functions
+def loadClasses(classes_file):
+    """ Load classes and checks that the number of levels for LME 
+    definition is not too high
 
-def getLMEclasses(classes_file):
+    Args:
+        - classes_file(str): name of file with cell classes definitions
+
+    Returns:
+        classes
+
     """
-    Checks that the number of levels for LME definition is not too high
 
-    Parameters
-    ----------
-    - classes_file: (str) name of file with cell classes definitions
-    """
-
-    classes = pd.read_csv(classes_file,
+    classes = pd.read_csv(filexists(classes_file),
                           converters={'abundance_edges': literal_eval,
                                       'mixing_edges': literal_eval})
+    classes['class'] = classes['class'].astype(str)
 
-    nedges = classes['abundance_edges']
-    medges = classes['mixing_edges']
-
-    nmax = max([len(x) for x in nedges])
-    mmax = max([len(x) for x in medges])
-
-    if (nmax > 4) or (mmax > 4):
+    ntest = (max([len(x) for x in classes['abundance_edges']]) > 4)
+    mtest = (max([len(x) for x in classes['mixing_edges']]) > 4) 
+    
+    if ntest or mtest:
         print("ERROR: There are too many LME levels...")
-        print("Please use less than 3 levels (4 edges)")
+        print("Please use no more than 3 levels (4 edges)")
         sys.exit()
 
     return(classes)
@@ -428,7 +421,7 @@ def lmeCode(x, dim):
     return(lme)
 
 
-# %%%% SSH Statistics functions
+# SSH Statistics functions
 
 def SSH(sid, data, classes, 
         fact_col, factlab, 
@@ -454,7 +447,7 @@ def SSH(sid, data, classes,
         ax[1].set_xticklabels(ax[1].get_xticks(), rotation = 90)
         
         plt.savefig(os.path.join(out_pth, 
-                                 sid + '_ssh_factor_' + fact_col + '.png'),
+                                 sid + '_ssh_factor_' + fact_col + IMGEXT),
                     bbox_inches='tight', dpi=300)
         plt.close()
     
@@ -533,10 +526,10 @@ def sshPlotStratification(sshtab, data, factlab, strlabs):
 
 
 def sshCases(sid, raster, 
-            imshape, scale, units, binsiz, 
-            field_name, comps, classes, 
-            lmes, blobs, strata, 
-            out_pth, do_plots, subset = True, para = False):
+             imshape, scale, units, binsiz, 
+             field_name, comps, classes, 
+             lmes, blobs, strata, 
+             out_pth, do_plots, subset = True, para = False):
     """
     """
     from joblib import Parallel, delayed
@@ -768,7 +761,7 @@ def sshComps(sid, raster,
     return(sshtab)  
 
 
-# %%%% Plotting functions
+# Plotting functions
 
 
 def plotEdges(shape, binsiz, scale):
@@ -820,7 +813,7 @@ def plotFactorLandscape(sid, patcharr, factarr, ttl, ftitle,
     
     # get mean value of factor per patch
     raster = np.empty(shape)
-    raster[:] = np.NaN
+    raster[:] = np.nan
     for b in np.unique(patcharr[patcharr>0]):
         raster[patcharr == b] = np.mean(factarr[patcharr == b])
         
@@ -849,7 +842,7 @@ def plotFactorLandscape(sid, patcharr, factarr, ttl, ftitle,
             fig.subplots_adjust(hspace=0.4)
             fig.suptitle('Sample ID: ' + str(sid), fontsize=24, y=.95)
             fig.savefig(os.path.join(res_pth, 
-                                     sid + '_' + nam + '_landscape.png'),
+                                     sid + '_' + nam + '_landscape' + IMGEXT),
                         bbox_inches='tight', dpi=300)
             plt.close()
 
@@ -857,8 +850,6 @@ def plotFactorLandscape(sid, patcharr, factarr, ttl, ftitle,
 
 
     # %% Main function
-
-
 def main(args):
 
     # %% start, checks how the program was launched 
@@ -877,17 +868,17 @@ def main(args):
         # running from the IDE
         # path of directory containing this script
         main_pth = os.path.dirname(os.getcwd())
-        argsfile = os.path.join(main_pth, 'DCIS.csv')
-        REDO = True
+        argsfile = os.path.join(main_pth, 'test_set.csv')
         GRPH = True
-        CASE = 119
+        REDO = True
+        CASE = 0
     else:
         # running from the CLI using the bash script
         # path to working directory (above /scripts)
         main_pth = os.getcwd()
         argsfile = os.path.join(main_pth, args.argsfile) 
-        REDO = args.redo
         GRPH = args.graph
+        REDO = args.redo
         CASE = args.casenum
 
     print("==> The working directory is: " + main_pth)
@@ -1043,6 +1034,11 @@ if __name__ == "__main__":
                            metavar="casenum",
                            type=int,
                            help="Set case number to be processed")
+    
+    my_parser.add_argument("--graph",
+                           default=False,
+                           action="store_true",
+                           help="If <<--graph>> is used, then print graphs")
 
     my_parser.add_argument("--redo",
                            default=False,

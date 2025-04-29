@@ -268,7 +268,7 @@ def main(args):
         # running from the IDE
         # path of directory containing this script
         main_pth = os.path.dirname(os.getcwd())
-        argsfile = os.path.join(main_pth, 'pathAI.csv')
+        argsfile = os.path.join(main_pth, 'test_set.csv')
     else:
         # running from the CLI using the bash script
         # path to working directory (above /scripts)

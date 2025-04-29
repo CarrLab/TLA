@@ -241,7 +241,7 @@ But when _ad hoc_ blobs (eg. pre-defined regions like ducts, crypts or DCIS) are
 Usage: 
 
 ```
->./TLA_points.sh [-s][-r] ssh test_set.csv
+>./TLA_points.sh [-s][-r][-g] ssh test_set.csv
 ```
 
 
@@ -363,23 +363,20 @@ which is equivalent to running the bash scripts:
 * For a single sample `{case}`, use the following instruction: 
 
 ```
-> python scripts/tla_points_ssh.py {argument table} {case} [--redo]
+> python scripts/tla_points_ssh.py {argument table} {case} [--graph][--redo]
 ```
 
 * __For processing the whole study__, it is recommended to use the script:
 
 ```
-> src/tla_points_ssh_loop.sh {argument table} [--redo]
+> src/tla_points_ssh_loop.sh {argument table} [--graph][--redo]
 ```
 
 which is equivalent to running the bash scripts:
 
 ```
-> ./TLA_points.sh [-r] ssh {argument table} `
+> ./TLA_points.sh [-r][-g] ssh {argument table} `
 ```
-
-__Note:__ note that there is no `--graph` option for the SSH module. If used in the `TLA_points.sh` wrapper, it will be ignored.
-
 
 ## Direct use for SLURM
 
@@ -416,7 +413,7 @@ This runs the script `tla_points_run_sum_batch.sh` in a SLURM array. This module
 4. To run `TLA_points ssh` module for all samples in the study in a SLURM array: 
 
 ```
-> src/tla_points_ssh_slurm.sh {argument table} [--redo]
+> src/tla_points_ssh_slurm.sh {argument table} [--graph] [--redo]
 ```
 This runs the script `tla_points_ssh_sbatch.sh` in a SLURM array for all samples, launching SBATCH instances.
 

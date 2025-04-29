@@ -546,6 +546,10 @@ class Sample:
         self.sid = str(slide.sid) + "_roi-" + str(roi) # sample ID
         self.tbl = slide.tbl.copy()                    # table of parameters
         self.tbl.sample_ID = self.sid
+        
+        # delete roi file field (roi array is saved in rasters after setup)
+        self.tbl.drop(columns=['roi_file'], inplace=True)
+        
         self.msg = "====> Sample [" + str(i + 1) + \
               "/" + str(len(slide.roi_sections)) + \
               "] :: SID <- " + self.sid + " >>> pre-processing..."
@@ -708,8 +712,8 @@ class Sample:
             msk[0:(rmax_ - rmin),
                 0:(cmax_ - cmin)] = tobit(msc[rmin:rmax_, cmin:cmax_])
             [cell_data, msk_img] = getBlobs(cell_data, msk)
-            np.savez_compressed(self.mask_file, roi=msk_img)
-            self.msk = (msk_img > 0).astype('bool')
+            np.savez_compressed(self.mask_file, roi=msk)
+            self.msk = (msk > 0).astype('bool')
         else:
             self.msk = []
 
@@ -2089,7 +2093,7 @@ def main(args):
         f = os.path.join(main_pth, 'test_set.csv')
         REDO = True
         GRPH = True
-        CASE = 0    # case number to process
+        CASE = 1    # case number to process
         
     else:
         # running from the CLI, (eg. using the bash script)

@@ -2643,6 +2643,7 @@ def SSH_ecological_detector_df(data, y_column, x_column_nn,
 
     from itertools import combinations
     from statsmodels.sandbox.stats.multicomp import multipletests
+    import scipy.stats as sts
     
     if ((fs is not None)):
         if (len(fs) != len(x_column_nn)):

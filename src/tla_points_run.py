@@ -2947,7 +2947,7 @@ def main(args):
         f = os.path.join(main_pth, 'test_set.csv')
         REDO = True
         GRPH = True
-        CASE = 0
+        CASE = 1
     else:
         # running from the CLI using the bash script
         # path to working directory (above /scripts)
@@ -3076,7 +3076,6 @@ def main(args):
     
     with open(study.done_list, 'a') as f:
         f.write(sample.sid + '\n')
-    
     
     #%%
     return(0)        

@@ -13,17 +13,10 @@ echo "TLA_points SSH: Processing ($ncases) samples in study <$1>"
 source /opt/anaconda3/etc/profile.d/conda.sh
 conda activate tlaenv
 
-redo=''
-if (( $# < 3 )); then
-    redo=$2
-else
-    redo=$3
-fi
-
 # run all samples in study
 for (( I=0; I<$ncases; I++ ))
     do
-	python src/tla_points_ssh.py $1 $I $redo
+    	python src/tla_points_ssh.py $1 $I $2 $3
     done
 
 

@@ -20,5 +20,5 @@ source activate tlaenv
 I=$(($SLURM_ARRAY_TASK_ID - 1))
 
 # run all setup steps in job array
-python src/tla_points_ssh.py ${STUDY} $I ${REDO}
+python src/tla_points_ssh.py ${STUDY} $I ${GRAPH} ${REDO}
 
