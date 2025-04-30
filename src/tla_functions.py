@@ -835,6 +835,59 @@ def nndist(rcx, rcy):
     return(tofloat(nndi))
     
     
+def nndist_norm(A, rcx, rcy=None):
+    """Normalized_Nearest Neighbor Distance index. Global
+    
+    Calculate the mean NN-Distance for all pairs given by two lists of 
+    coordinates. Defined for two different point classes. Then normalize by
+    the expected distance according to the Complete Spatial Randomness 
+    hypothesis. This expectd value is given by the inverse of the test cells 
+    density.
+    
+        - 'exp_NNDist' is the expected mean NNDist of ref cells to test cells
+        - 'test_NNDist' is the mean NNDist of ref cells to test cells
+        - Index: v = log(test_NNDist/exp_NNDist)
+
+        - v > 0 indicates ref and test cells are segregated (test cells are 
+          prefentially distanced from ref cells)
+        - v ~ 0 indicates ref and test cells are well mixed 
+        - v < 0 indicates ref cells are individually infiltrated (ref cells 
+          are closer, thus preferentially surrounded to test cells than other
+          ref cells)
+                
+    Args:
+        - rcx (numpy): array of coordinates for ref cells (Nx2)
+        - rcy (numpy): array of coordinates for test cells (Nx2)
+        - total area of the landscape
+
+    Returns:
+        (float) value of v.
+
+    """
+    from scipy.spatial import KDTree
+    
+    v = 0
+    if rcy is None:
+        if (len(rcx) > 1):
+            # get mean nearest neighbor distances of ref cells with themselves
+            dnnxx, _ = KDTree(rcx).query(rcx, k=[2])
+            # gets ratio of mean NNDist
+            v = np.mean(dnnxx)/ np.sqrt(A/(len(rcx)*np.pi))
+    else:
+        if (len(rcx) > 1) and (len(rcy) > 0):
+            # get nearest neighbor distances to test cells
+            dnnxy, _ = KDTree(rcy).query(rcx, k=[1])
+            # gets ratio of mean NNDist
+            v = np.mean(dnnxy) / np.sqrt(A/(len(rcy)*np.pi))
+            
+    if (v > 0):
+        nndi = np.log10(v)
+    else:
+        nndi = np.nan
+
+    return(tofloat(nndi))
+        
+
 def nndist_array(rcx, rcy, N, kernel, roi, cuda=False):
     """Nearest Neighbor Distance index. Local
 

@@ -23,13 +23,13 @@
 
 
 graph=""
-if [[ "$2" == "--graph" || "$3" == "--graph"]] 
+if [ "$2"=="--graph" || "$3"=="--graph" ]
 then
   graph="--graph"
 fi
 
 redo=""
-if [[ "$2" == "--redo" || "$3" == "--redo"]] 
+if [ "$2"=="--redo" || "$3"=="--redo" ]
 then
   redo="--redo"
 fi
@@ -70,7 +70,7 @@ else
     # generate a list of samples not yet processed
     echo "Found some previously pre-processed samples..."
     
-    if [[ -z "$redo" ]] 
+    if [[ -z "$redo" ]]
     then
         # continue processing only cases not yet finished
         grep -w -vFf $done_samples $samples_files > $sub_samples 

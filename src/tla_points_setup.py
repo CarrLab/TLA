@@ -409,8 +409,11 @@ class Slide:
             msk = np.zeros(imshape, dtype='uint8')
             msk[0:(rmax_ - rmin),
                 0:(cmax_ - cmin)] = tobit(msc[rmin:rmax_, cmin:cmax_])
+            # get a binary image from the (thresholded) mask
+            msk = (msk > 127).astype('bool')
             [cell_data, msk_img] = getBlobs(cell_data, msk)
-            self.msk = (msk_img > 0).astype('bool')
+            # get a binary image from the (thresholded) mask
+            self.msk = msk
         else:
             self.msk = []
 
@@ -711,9 +714,10 @@ class Sample:
             msk = np.zeros(imshape, dtype='uint8')
             msk[0:(rmax_ - rmin),
                 0:(cmax_ - cmin)] = tobit(msc[rmin:rmax_, cmin:cmax_])
+            msk = (msk > 0).astype('bool')
             [cell_data, msk_img] = getBlobs(cell_data, msk)
-            np.savez_compressed(self.mask_file, roi=msk)
-            self.msk = (msk > 0).astype('bool')
+            np.savez_compressed(self.mask_file, roi=msk_img)
+            self.msk = msk
         else:
             self.msk = []
 
@@ -1106,7 +1110,7 @@ class Sample:
         fout = self.spafac_file
         if redo or not os.path.exists(fout):
             
-            from tla_functions import nndist, attraction_T
+            from tla_functions import nndist, nndist_norm, attraction_T
             from tla_functions import ripleys_K
 
             data = self.cell_data.copy()
@@ -1126,6 +1130,7 @@ class Sample:
 
             # Nearest Neighbor Distance index
             nndistarr = tofloat(np.full((nc, nc), np.nan))
+            nndadjarr = tofloat(np.full((nc, nc), np.nan))
             
             # physical values of radii
             rsp = list(np.around(np.array(self.rs) * self.scale, decimals=2))
@@ -1176,6 +1181,10 @@ class Sample:
                         dy = n[:, :, i, k]/(2*np.pi*r*r)
                         tk = attraction_T(rcx, ptdens_i, dy)
                         aefuncarr[i, i, k, 1] = tk
+                        
+                        # adjusted Nearest Neighbor Distance index (identity)
+                        nndadjarr[i, i] = nndist_norm(A, rcx)
+                        
                     gc.collect()
 
                     nam = cx + '_' + cx
@@ -1225,6 +1234,7 @@ class Sample:
 
                                 # Nearest Neighbor Distance index
                                 nndistarr[i, j] = nndist(rcx, rcy)
+                                nndadjarr[i, j] = nndist_norm(A, rcx, rcy)
 
                             if (i > j):
                                 # MH index from quadrats sampling
@@ -1256,6 +1266,7 @@ class Sample:
             np.savez_compressed(self.spafac_file,
                                 coloc=colocarr,
                                 nndist=nndistarr,
+                                nndadj=nndadjarr,
                                 aefunc=aefuncarr,
                                 rhfunc=rhfuncarr)
 
@@ -1265,11 +1276,13 @@ class Sample:
             aux = np.load(fout)
             colocarr = tofloat(aux['coloc'])
             nndistarr = tofloat(aux['nndist'])
+            nndadjarr = tofloat(aux['nndadj'])
             aefuncarr = tofloat(aux['aefunc'])
             rhfuncarr = tofloat(aux['rhfunc'])
 
         self.coloc = colocarr
         self.nndist = nndistarr
+        self.nndadj = nndadjarr
         self.aefunc = aefuncarr
         self.rhfunc = rhfuncarr
 
@@ -1328,6 +1341,14 @@ class Sample:
             cb = self.classes.iloc[comp[1]]['class']
             aux = np.round(self.nndist[comp[0], comp[1]], 4)
             stats['nndist_' + ca + '_' + cb] = tofloat(aux)
+            
+        # records overal Adjusted  Nearest Neighbor Dist index at pixel level
+        comps = list(product(self.classes.index.values.tolist(), repeat=2))
+        for comp in comps:
+            ca = self.classes.iloc[comp[0]]['class']
+            cb = self.classes.iloc[comp[1]]['class']
+            aux = np.round(self.nndadj[comp[0], comp[1]], 4)
+            stats['nndadj_' + ca + '_' + cb] = tofloat(aux)
 
         # records overal Attraction Enrichment Function index at pixel level
         comps = list(product(self.classes.index.values.tolist(), repeat=2))
@@ -1384,6 +1405,10 @@ class Sample:
             print('(*) Overall Nearest-Neighbor Distance Index: ')
             aux = stats[[c for c in stats.index if c.startswith('nndist_')]]
             aux.name = "D"
+            print(aux.to_markdown())
+            print('(*) Overall adjusted Nearest-Neighbor Distance Index: ')
+            aux = stats[[c for c in stats.index if c.startswith('nndadj_')]]
+            aux.name = "A"
             print(aux.to_markdown())
             print('(*) Overall Attraction Enrichment Score T(' +
                   str(self.bw) + '[pix]):')
@@ -2048,15 +2073,11 @@ def getBlobs(data, mask):
     from tla_functions import toint
     from skimage import measure
 
-    # get a binary image from the (thresholded) mask
-    msk_img = np.zeros(mask.shape, dtype='uint8')
-    msk_img[mask > 127] = 1
-
     # label blobs in mask image
-    blobs_labels = measure.label(msk_img, background=0, connectivity=2)
+    blobs_labels = measure.label(mask, background=0, connectivity=2)
 
     # get data coordinates and labels for mask
-    rows, cols = np.where(msk_img > 0)
+    rows, cols = np.where(mask > 0)
     msk_data = pd.DataFrame({'blob': blobs_labels[rows, cols],
                              'row': rows,
                              'col': cols})
@@ -2093,7 +2114,7 @@ def main(args):
         f = os.path.join(main_pth, 'test_set.csv')
         REDO = True
         GRPH = True
-        CASE = 1    # case number to process
+        CASE = 0    # case number to process
         
     else:
         # running from the CLI, (eg. using the bash script)
