@@ -196,6 +196,7 @@ class Sample:
         # output raster file names
         self.coloc_file = os.path.join(pth, self.sid + '_coloc.npz')  
         self.nndist_file = os.path.join(pth, self.sid + '_nndist.npz') 
+        self.nndadj_file = os.path.join(pth, self.sid + '_nndadj.npz') 
         self.aefunc_file = os.path.join(pth, self.sid + '_aefunc.npz')  
         self.rhfunc_file = os.path.join(pth, self.sid + '_rhfunc.npz')  
         self.geordG_file = os.path.join(pth, self.sid + '_geordG.npz')  
@@ -234,7 +235,19 @@ class Sample:
            - M ~ 0 indicates the two classes are segregated
     
         2- Nearest Neighbor Distance index: Bi-variate asymetric score between 
-           all classes ('ref' and 'test')
+           all classes ('ref' and 'test'). This index is a relative measure. 
+           It's the observed mean distance of test cells to ref cells
+           normalized by the mean distance between ref cells
+        
+           - V > 0 indicates ref and test cells are segregated
+           - V ~ 0 indicates ref and test cells are well mixed
+           - V < 0 indicates ref cells are individually infiltrated
+                   (ref cells are closer to test cells than other ref cells)
+                   
+        2- Adjusted Nearest Neighbor Distance index: Bi-variate asymetric score 
+           between all classes ('ref' and 'test'). This index is normalized by
+           the expected distance between ref cells and test cells according to 
+           the CSR null hypothesis.
         
            - V > 0 indicates ref and test cells are segregated
            - V ~ 0 indicates ref and test cells are well mixed
@@ -271,8 +284,8 @@ class Sample:
         """
         from tla_functions import tofloat, toint, tobit, gkern
         from tla_functions import getis_ord_g_array, morisita_horn_array
-        from tla_functions import nndist_array, attraction_T_array
-        from tla_functions import ripleys_K_array
+        from tla_functions import nndist_array, nndist_norm_array
+        from tla_functions import attraction_T_array, ripleys_K_array
         
         # load data
         data = pd.read_csv(self.coord_file)
@@ -286,6 +299,7 @@ class Sample:
         if (redo):
             iscoloc = ~df.loc[df['name'] == 'coloc']['drop'].values[0] 
             isnndist = ~df.loc[df['name'] == 'nndist']['drop'].values[0] 
+            isnndadj = ~df.loc[df['name'] == 'nndadj']['drop'].values[0] 
             isaefunc = ~df.loc[df['name'] == 'aefunc']['drop'].values[0] 
             isrhfunc = ~df.loc[df['name'] == 'rhfunc']['drop'].values[0] 
             isgeordG = ~df.loc[df['name'] == 'geordG']['drop'].values[0] 
@@ -294,6 +308,8 @@ class Sample:
                 not os.path.exists(self.coloc_file)
             isnndist = ~df.loc[df['name'] == 'nndist']['drop'].values[0] and \
                 not os.path.exists(self.nndist_file)
+            isnndadj = ~df.loc[df['name'] == 'nndadj']['drop'].values[0] and \
+                not os.path.exists(self.nndadj_file)
             isaefunc = ~df.loc[df['name'] == 'aefunc']['drop'].values[0] and \
                     not os.path.exists(self.aefunc_file)
             isrhfunc = ~df.loc[df['name'] == 'rhfunc']['drop'].values[0] and \
@@ -302,7 +318,7 @@ class Sample:
                 not os.path.exists(self.geordG_file)
         
         # if not all analyses are dropped
-        if (iscoloc or isnndist or isaefunc or isrhfunc or isgeordG):
+        if (iscoloc or isnndist or isnndadj or isaefunc or isrhfunc or isgeordG):
             
             # lists of classes cases to be calculated (x is ref, y is target)
             cases_x = []
@@ -310,6 +326,7 @@ class Sample:
             # empty arrays for desider comparisons for each metric
             coloc_comps = []
             nndist_comps = []
+            nndadj_comps = []
             aefunc_comps = []
             rhfunc_comps = []
             geordG_comps = []
@@ -325,6 +342,7 @@ class Sample:
                                 set([c[0] for c in coloc_comps]))
                 cases_y  = list(set(cases_y) | 
                                 set([c[1] for c in coloc_comps]))
+                
             if isnndist:
                 # combinations of cases:
                 nndist_comps = df.loc[df['name']=='nndist']['comps'].values[0]
@@ -335,6 +353,18 @@ class Sample:
                                 set([c[0] for c in nndist_comps]))
                 cases_y  = list(set(cases_y) |
                                 set([c[1] for c in nndist_comps]))
+            
+            if isnndadj:
+                # combinations of cases:
+                nndadj_comps = df.loc[df['name']=='nndadj']['comps'].values[0]
+                # Nearest Neighbor Distance index
+                nndadjarr = tofloat(np.full((shape[0], shape[1],
+                                             len(nndadj_comps)),  np.nan))
+                cases_x  = list(set(cases_x) | 
+                                set([c[0] for c in nndadj_comps]))
+                cases_y  = list(set(cases_y) |
+                                set([c[1] for c in nndadj_comps]))
+                
             if isaefunc:
                 # combinations of cases:
                 aefunc_comps = df.loc[df['name']=='aefunc']['comps'].values[0]
@@ -345,6 +375,7 @@ class Sample:
                                 set([c[0] for c in aefunc_comps]))
                 cases_y  = list(set(cases_y) | 
                                 set([c[1] for c in aefunc_comps]))
+                
             if isrhfunc:
                 # combinations of cases:
                 rhfunc_comps = df.loc[df['name']=='rhfunc']['comps'].values[0]
@@ -355,6 +386,7 @@ class Sample:
                                 set([c[0] for c in rhfunc_comps]))
                 cases_y  = list(set(cases_y) | 
                                 set([c[1] for c in rhfunc_comps]))
+                
             if isgeordG:
                 # combinations of cases:
                 geordG_comps = df.loc[df['name']=='geordG']['comps'].values[0]
@@ -485,14 +517,21 @@ class Sample:
                     if (comp in nndist_comps):
                         if (comp[0] != comp[1]):
                             # Nearest Neighbor Distance index (bivariate)
-                            D = nndist_array(rcx, rcy, 
-                                             N[:, :, xi], gker, roi,
-                                             cuda=ISCUDA)
+                            D = nndist_array(N[:, :, xi], gker, roi,
+                                             rcx, rcy, cuda=ISCUDA)
+                            # Adj Nearest Neighbor Distance index (bivariate)
+                            B =  nndist_norm_array(N[:, :, xi], gker, roi,
+                                             rcx, rcy,  cuda=ISCUDA)
                         else:
                             # Nearest Neighbor Distance index (identity)
                             D = 1.0*(N[:, :, xi] > 0)
                             D[~roi] = np.nan
+                            # Adj Nearest Neighbor Distance index (identity)
+                            B =  nndist_norm_array(N[:, :, xi], gker, roi,
+                                             rcx, cuda=ISCUDA)
+                            
                         nndistarr[:, :, nndist_comps.index(comp)] = D
+                        nndadjarr[:, :, nndadj_comps.index(comp)] = B
                     
                     if (comp in aefunc_comps):
                         # Attraction Enrichment T score (bivarite)
@@ -534,6 +573,12 @@ class Sample:
                 np.savez_compressed(self.nndist_file, 
                                     nndist=nndistarr)
                 del nndistarr
+                
+            if isnndadj:
+                # saves nndist cases:
+                np.savez_compressed(self.nndadj_file, 
+                                    nndadj=nndadjarr)
+                del nndadjarr
                 
             if isrhfunc:
                 # saves rhfunc cases:
@@ -971,6 +1016,129 @@ class Sample:
         gc.collect() 
         
       
+    def plotNNDadjLandscape(self, redo, analyses, lims, do_plots=False):
+        """
+        Plots adj nearest neighbor distance index landscape from raster
+  
+        """
+        # from itertools import permutations
+        # # generate list of comparisons for coloc
+        # comps = [list(c) for c in list(permutations(self.classes.index,r=2))]
+
+        # if this analysis is already done, skip it
+        out_pth = mkdirs(os.path.join(self.res_pth, 'space_factors'))
+        fout = os.path.join(out_pth, self.sid +'_nndadj_stats.csv')
+        if (redo or not os.path.exists(fout)):
+        
+            # analyses
+            df = analyses.copy()
+            isnndadj = ~df.loc[df['name'] == 'nndadj']['drop'].values[0]
+            
+            if isnndadj:
+                aux = np.load(self.nndadj_file)
+                nndadjarr = aux['nndadj']
+                
+                # combinations of cases:
+                aux = df.loc[df['name'] == 'nndadj']
+                nndadj_comps = aux['comps'].values[0]
+                compsterm = nndadj_comps.copy()
+                compslabs = nndadj_comps.copy()
+                for i, comp in enumerate(nndadj_comps):
+                    aux = self.classes.loc[self.classes['class'] == comp[0]]
+                    cl1 = aux.class_name.item()
+                    aux = self.classes.loc[self.classes['class'] == comp[1]]
+                    cl2 = aux.class_name.item()
+                    compsterm[i] = comp[0] + '::' + comp[1]
+                    compslabs[i] = '(' + cl1  + '::' + cl2 + ')'
+                
+                # plots array of landscapes for these comparisons
+                [fig, metrics] = plotCompLandscape(self.sid, 
+                                                   nndadjarr, 
+                                                   self.roiarr,
+                                                   nndadj_comps, 
+                                                   compsterm,
+                                                   compslabs,
+                                                   self.imshape,
+                                                   'NNDadj index',
+                                                   10,
+                                                   lims,
+                                                   self.scale,
+                                                   self.units, 
+                                                   self.binsiz,
+                                                   do_plots)
+                # saves landscape metrics table
+                metrics.to_csv(fout, sep=',', index=False, header=True)
+                
+                if do_plots:
+                    # saves to png file
+                    fout = os.path.join(out_pth,
+                                        self.sid +'_nndadj_landscape' + IMGEXT)
+                    fig.savefig(fout, bbox_inches='tight', dpi=300)
+                    plt.close()
+                    
+                    if (len(nndadj_comps)>1):
+                        # plot correlations between comparisons
+                        ttl = 'NNDadj index Correlations\n' + \
+                            'Sample ID: ' + str(self.sid)
+                        fig = plotCompCorrelations(self.classes, 
+                                                   nndadjarr, 
+                                                   nndadj_comps,
+                                                   ttl, 
+                                                   lims)
+                        fout = os.path.join(out_pth, 
+                                            self.sid + \
+                                                '_nndadj_correlations' + 
+                                                IMGEXT)
+                        plt.savefig(fout, bbox_inches='tight', dpi=300)
+                        plt.close()
+                del nndadjarr
+                gc.collect()     
+              
+              
+    def plotNNDadjLandscape_simple(self, icomp, comps, metric, lims):
+        """
+        Plots adj nearest neighbor distance index landscape from raster
+    
+        """
+        # from itertools import permutations
+        # # generate list of comparisons for coloc
+        # comps = [list(c) for c in list(permutations(self.classes.index, r=2))]
+        
+        out_pth = mkdirs(os.path.join(self.res_pth, 'space_factors'))
+        
+        aux = np.load(self.nndadj_file)
+        nndadjarr = aux['nndadj']
+        
+        comp = comps[icomp]
+        
+        aux = self.classes.loc[self.classes['class'] == comp[0]]
+        cl1 = aux.class_name.item()
+        aux = self.classes.loc[self.classes['class'] == comp[1]]
+        cl2 = aux.class_name.item()
+        lbl = '(' + cl1  + '::' + cl2 + ')'
+            
+        # plots array of landscapes for these comparisons
+        fig = plotCompLandscape_simple(self.sid,
+                                       nndadjarr,
+                                       self.roiarr,
+                                       icomp,
+                                       self.imshape,
+                                       metric + ' - ' + lbl,
+                                       10, 
+                                       lims,
+                                       self.scale,
+                                       self.units,
+                                       self.binsiz)
+        # saves to png file
+        nam = self.sid +'_nndadj_landscape_simple_' + \
+            comp[0]+ "_" + comp[1] + IMGEXT
+        fig.savefig(os.path.join(out_pth, nam), bbox_inches='tight', dpi=300)
+        plt.close()
+                          
+        del nndadjarr
+        gc.collect()    
+              
+
     def plotNNDistLandscape(self, redo, analyses, lims, do_plots=False):
         """
         Plots nearest neighbor distance index landscape from raster
@@ -1093,7 +1261,7 @@ class Sample:
         del nndistarr
         gc.collect()    
               
-
+        
     def plotRHFuncLandscape(self, redo, analyses, lims, do_plots=False):
         """
         Plots Ripley`s H function score landscape from raster
@@ -1449,15 +1617,17 @@ class Sample:
             df = analyses.copy()
             iscoloc = ~df.loc[df['name'] == 'coloc']['drop'].values[0]
             isnndist = ~df.loc[df['name'] == 'nndist']['drop'].values[0]
+            isnndadj = ~df.loc[df['name'] == 'nndadj']['drop'].values[0]
             isrhfunc = ~df.loc[df['name'] == 'rhfunc']['drop'].values[0]
             
             cases = self.classes['class'].tolist()
             
-            if (iscoloc or isnndist or isrhfunc):
+            if (iscoloc or isnndist or isnndadj or isrhfunc):
                 
                 # empty arrays for desider comparisons for each metric
                 coloc_comps = []
                 nndist_comps = []
+                nndadj_comps = []
                 rhfunc_comps = []
                 
                 # get comparisons and reduced lists of cases
@@ -1471,6 +1641,11 @@ class Sample:
                     comps = df.loc[df['name'] == 'nndist']['comps'].values[0]
                     nndist_comps = [(cases.index(c[0]), 
                                      cases.index(c[1])) for c in comps]
+                if isnndadj:
+                    # combinations of cases:
+                    comps = df.loc[df['name'] == 'nndadj']['comps'].values[0]
+                    nndadj_comps = [(cases.index(c[0]), 
+                                     cases.index(c[1])) for c in comps]
                 if isrhfunc:
                     # combinations of cases:
                     comps = df.loc[df['name'] == 'rhfunc']['comps'].values[0]
@@ -1482,6 +1657,7 @@ class Sample:
                                            'pearson_cor', 'p_value:'])
             colocarr = []
             nndistarr = []
+            nndadjarr = []
             rhfuncarr = []
             
             if iscoloc:
@@ -1502,6 +1678,20 @@ class Sample:
                     except:
                         vmin = -1.5
                         vmax = 1.5
+                        
+            if isnndadj:
+                aux = np.load(self.nndadj_file)
+                nndadjarr = aux['nndadj']
+                if (np.isnan(nndadjarr).all()):
+                    isnndadj = False
+                else:
+                    try:
+                        vmin = 0.25*round(np.nanquantile(nndadjarr, .001)/0.25)
+                        vmax = 0.25*round(np.nanquantile(nndadjarr, .999)/0.25)
+                    except:
+                        vmin = -1.5
+                        vmax = 1.5
+                        
             if isrhfunc:
                 aux = np.load(self.rhfunc_file)
                 rhfuncarr = aux['rhfunc']
@@ -1518,7 +1708,7 @@ class Sample:
             if iscoloc and isrhfunc:
                             
                 # plot correlations between coloc and RHindex comparisons
-                ttl = 'Coloc - RHindex Correlations\nSample ID: ' + \
+                ttl = 'Coloc - RHfunc Correlations\nSample ID: ' + \
                     str(self.sid)
                 [fig, df] = plotFactorCorrelation(colocarr, 
                                                   coloc_comps, 
@@ -1534,7 +1724,7 @@ class Sample:
                 if do_plots:
                     fig.savefig(os.path.join(out_pth,
                                              self.sid + \
-                                                 '_coloc-rhindex_corr' + 
+                                                 '_coloc-rhfunc_corr' + 
                                                  IMGEXT),
                                       bbox_inches='tight', dpi=300)
                     plt.close()
@@ -1553,7 +1743,7 @@ class Sample:
                                                   [0.0, 1.0],
                                                   nndistarr, 
                                                   nndist_comps, 
-                                                  'RHindex', 
+                                                  'NNDist', 
                                                   [vmin, vmax],
                                                   ttl,
                                                   self.classes,
@@ -1561,7 +1751,7 @@ class Sample:
                 if do_plots:
                     fig.savefig(os.path.join(out_pth,
                                              self.sid + \
-                                                 '_coloc-nnindex_corr' + 
+                                                 '_coloc-nndist_corr' + 
                                                  IMGEXT),
                                 bbox_inches='tight', dpi=300)
                     plt.close()
@@ -1569,14 +1759,95 @@ class Sample:
                 # concatenate correlation tables
                 corr =  pd.concat([corr, df], ignore_index=True)
                       
-            if iscoloc and isnndist:
+            if iscoloc and isnndadj:
+                
+                # plot correlations between coloc and NNindex comparisons
+                ttl = 'Coloc - NNdadj Correlations\nSample ID: ' + \
+                    str(self.sid)
+                [fig, df] = plotFactorCorrelation(colocarr, 
+                                                  coloc_comps, 
+                                                  'coloc', 
+                                                  [0.0, 1.0],
+                                                  nndadjarr, 
+                                                  nndadj_comps, 
+                                                  'NNDadj', 
+                                                  [vmin, vmax],
+                                                  ttl,
+                                                  self.classes,
+                                                  do_plots)
+                if do_plots:
+                    fig.savefig(os.path.join(out_pth,
+                                             self.sid + \
+                                                 '_coloc-nndadj_corr' + 
+                                                 IMGEXT),
+                                bbox_inches='tight', dpi=300)
+                    plt.close()
+                    
+                # concatenate correlation tables
+                corr =  pd.concat([corr, df], ignore_index=True)
+            
+            if isnndadj and isnndist:
+                
+                # plot correlations between NNindex and NNDadjcomparisons
+                ttl = 'NNDadj - NNDist Correlations\nSample ID: ' + \
+                    str(self.sid)
+                [fig, df] = plotFactorCorrelation(nndadjarr, 
+                                                  nndadj_comps, 
+                                                  'NNDadj', 
+                                                  [wmin, wmax],
+                                                  nndistarr, 
+                                                  nndist_comps, 
+                                                  'NNDist', 
+                                                  [vmin, vmax],
+                                                  ttl,
+                                                  self.classes,
+                                                  do_plots)
+                if do_plots:
+                    fig.savefig(os.path.join(out_pth, 
+                                             self.sid + \
+                                                 '_nndadj-nndist_corr' + 
+                                                 IMGEXT),
+                                bbox_inches='tight', dpi=300)
+                    plt.close()
+                    
+                # concatenate correlation tables
+                corr =  pd.concat([corr, df], ignore_index=True)
+            
+            if isnndadj and isrhfunc:
                 
                 # plot correlations between NNindex and RHindex comparisons
-                ttl = 'RHindex - NNdist Correlations\nSample ID: ' + \
+                ttl = 'RHfunc - NNDadj Correlations\nSample ID: ' + \
                     str(self.sid)
                 [fig, df] = plotFactorCorrelation(rhfuncarr, 
                                                   rhfunc_comps, 
                                                   'RHindex', 
+                                                  [wmin, wmax],
+                                                  nndadjarr, 
+                                                  nndadj_comps, 
+                                                  'NNDadj', 
+                                                  [vmin, vmax],
+                                                  ttl,
+                                                  self.classes,
+                                                  do_plots)
+                if do_plots:
+                    fig.savefig(os.path.join(out_pth, 
+                                             self.sid + \
+                                                 '_nndadj-rhfunc_corr' + 
+                                                 IMGEXT),
+                                bbox_inches='tight', dpi=300)
+                    plt.close()
+                    
+                # concatenate correlation tables
+                corr =  pd.concat([corr, df], ignore_index=True)
+            
+            if isrhfunc and isnndist:
+                
+                # plot correlations between NNindex and RHindex comparisons
+                ttl = 'RHfunc - NNdist Correlations\nSample ID: ' + \
+                    str(self.sid)
+                [fig, df] = plotFactorCorrelation(rhfuncarr, 
+                                                  rhfunc_comps, 
+                                                  'RHfunc', 
                                                   [wmin, wmax],
                                                   nndistarr, 
                                                   nndist_comps, 
@@ -1588,7 +1859,7 @@ class Sample:
                 if do_plots:
                     fig.savefig(os.path.join(out_pth, 
                                              self.sid + \
-                                                 '_nnindex-rhindex_corr' + 
+                                                 '_nnindex-rhfunc_corr' + 
                                                  IMGEXT),
                                 bbox_inches='tight', dpi=300)
                     plt.close()
@@ -1600,7 +1871,8 @@ class Sample:
             corr.to_csv(fout, sep=',', index=False, header=True)
             
             del colocarr 
-            del nndistarr 
+            del nndistarr
+            del nndadjarr 
             del rhfuncarr 
             gc.collect()
             

@@ -82,6 +82,7 @@ class Study:
       self.mix_stats = pd.DataFrame()
       self.coloc_stats = pd.DataFrame()
       self.nndist_stats = pd.DataFrame()
+      self.nndadj_stats = pd.DataFrame()
       self.rhfunc_stats = pd.DataFrame()
       #self.geordG_stats = pd.DataFrame()
       #self.geordG_local_stats = pd.DataFrame()
@@ -144,6 +145,13 @@ class Study:
                     self.nndist_stats = pd.concat([self.nndist_stats, aux],
                                                   ignore_index=True)
                     
+                # adj NN distance features
+                f = os.path.join(sfs_pth, sid +'_nndadj_stats.csv')
+                if os.path.exists(f):
+                    aux = loadToWide(f, sid, 'nndadj')
+                    self.nndadj_stats = pd.concat([self.nndadj_stats, aux],
+                                                  ignore_index=True)
+                    
                 # Ripley's H features
                 f = os.path.join(sfs_pth, sid +'_rhfunc_stats.csv')
                 if os.path.exists(f):
@@ -195,7 +203,10 @@ class Study:
       self.coloc_stats.to_csv(f, index=False, header=True)  
       
       f = os.path.join(pth, self.name + '_nndist_tbl.csv')      
-      self.nndist_stats.to_csv(f, index=False, header=True)  
+      self.nndist_stats.to_csv(f, index=False, header=True)
+      
+      f = os.path.join(pth, self.name + '_nndadj_tbl.csv')      
+      self.nndadj_stats.to_csv(f, index=False, header=True)  
       
       f = os.path.join(pth, self.name + '_rhfunc_tbl.csv')      
       self.rhfunc_stats.to_csv(f, index=False, header=True)  

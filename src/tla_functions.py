@@ -836,7 +836,7 @@ def nndist(rcx, rcy):
     
     
 def nndist_norm(A, rcx, rcy=None):
-    """Normalized_Nearest Neighbor Distance index. Global
+    """Normalized Nearest Neighbor Distance index. Global
     
     Calculate the mean NN-Distance for all pairs given by two lists of 
     coordinates. Defined for two different point classes. Then normalize by
@@ -888,7 +888,7 @@ def nndist_norm(A, rcx, rcy=None):
     return(tofloat(nndi))
         
 
-def nndist_array(rcx, rcy, N, kernel, roi, cuda=False):
+def nndist_array(N, kernel, roi, rcx, rcy, cuda=False):
     """Nearest Neighbor Distance index. Local
 
     Calculate the mean NN-Distance for all pairs given by two lists of 
@@ -994,6 +994,156 @@ def nndist_array(rcx, rcy, N, kernel, roi, cuda=False):
             v = np.log10(v)
         
         v[~roi] = np.nan
+        
+    return(tofloat(v))
+
+
+def nndist_norm_array(N, kernel, roi, rcx, rcy=None, cuda=False):
+    """Normalized Nearest Neighbor Distance index. Local
+
+    Calculate the mean NN-Distance for all pairs given by two lists of 
+    coordinates. Defined for two different point classes. Then normalize by
+    the expected distance according to the Complete Spatial Randomness 
+    hypothesis. This expectd value is given by the inverse of the test cells 
+    density.
+    
+    This index is calculated in each location of the lanscape, with the index 
+    being the statistics calculated in each region defined by the kernel 
+    (region where the mean NNDs are calculated). For this mean, the array `N` 
+    carries the total number of points per kernel.
+    
+        - 'exp_NNDist' is the expected mean NNDist of ref cells to test cells
+        - 'test_NNDist' is the mean NNDist of ref cells to test cells
+        - Index: v = log(test_NNDist/exp_NNDist)
+
+        - v > 0 indicates ref and test cells are segregated (test cells are 
+          prefentially distanced from ref cells)
+        - v ~ 0 indicates ref and test cells are well mixed 
+        - v < 0 indicates ref cells are individually infiltrated (ref cells 
+          are closer, thus preferentially surrounded to test cells than other
+          ref cells)
+
+    Args:
+        - N (numpy): KAE array with ref cell abundances
+        - kernel (numpy): kernel array for convolution smoothing
+        - roi (numpy): ROI mask
+        - rcx (numpy): Nx2 array of coordinates for reference class.
+        - rcy (numpy): Nx2 array of coordinates for test class. 
+        - cuda (bool, optional): use cuda GPU processing. Defaults to False.
+        
+    Returns:
+        (float) value of v.
+
+    """
+
+    from scipy.spatial import KDTree
+    
+    v = np.nan*np.ones(N.shape)
+    A = np.sum(kernel)
+    
+    if rcy is None:
+        # This is the univariate case
+        if (len(rcx) > 1):
+            # get mean nearest neighbor distances of ref cells with themselves
+            dnnxx, _ = KDTree(rcx).query(rcx, k=[2])
+            # turns into array form
+            nnxx = tofloat(np.zeros((N.shape[0], N.shape[1])))
+            nnxx[rcx[:, 0], rcx[:, 1]] = tofloat(dnnxx[:, 0])
+            
+            if cuda:
+                # transfer arrays to GPU
+                xs = tocuda(nnxx)
+                ks = tocuda(kernel)
+                Ns = tocuda(N)
+                dtf = Ns > 0
+                
+                # local mean of ref-ref nndist
+                aux = cudaconv2d(xs, ks)
+                aux[aux < 0] = 0
+                mdnnxx = torch.full_like(xs, fill_value=np.nan)
+                mdnnxx[dtf] = aux[dtf] / Ns[dtf]
+                
+                # inverse of expected local ref-ref distance
+                dexp = torch.sqrt((Ns*np.pi)/A)
+        
+                # gets (local) ratio of mean NNDists
+                aux = mdnnxx * dexp
+                aux[aux <= 0] = np.nan
+                v = torch.log10(aux).cpu().numpy()
+                
+                del xs, ks, Ns, aux, dtf, mdnnxx, dexp
+                torch.cuda.empty_cache()
+            
+            else:  
+                
+                from scipy.signal import fftconvolve
+                
+                # local mean of ref-ref nndist(div by local number of ref cells)
+                aux = fftconvolve(nnxx, kernel, mode='same')
+                aux[aux < 0] = 0
+                mdnnxx = np.divide(aux, N, out=np.zeros(N.shape), where=(N > 0))
+            
+                # inverse of expected local ref-ref distance
+                dexp = np.sqrt((N*np.pi) / A)
+    
+                # gets (local) ratio of mean NNDists
+                v = mdnnxx * dexp
+                v[v <= 0] = np.nan
+                v = np.log10(v)
+            
+    else:
+        # This is the bivariate case
+        if ((len(rcx) > 1) & (len(rcy) > 0)):
+    
+            # get nearest neighbor distances of ref cells to test cells
+            dnnxy, _ = KDTree(rcy).query(rcx, k=[1])
+            # turns to array form
+            nnxy = tofloat(np.zeros((N.shape[0], N.shape[1])))
+            nnxy[rcx[:, 0], rcx[:, 1]] = tofloat(dnnxy[:, 0])
+            
+            if cuda:
+                # transfer arrays to GPU
+                ys = tocuda(nnxy)
+                ks = tocuda(kernel)
+                Ns = tocuda(N)
+                dtf = Ns > 0
+                
+                # local mean of ref-test nndist 
+                aux = cudaconv2d(ys, ks)
+                aux[aux < 0] = 0
+                mdnnxy = torch.full_like(ys, fill_value=np.nan)
+                mdnnxy[dtf] = aux[dtf] / Ns[dtf]
+                
+                # inverse of expected local ref-ref distance
+                dexp = torch.sqrt((Ns*np.pi)/A)
+        
+                # gets (local) ratio of mean NNDists
+                aux = mdnnxy * dexp
+                aux[aux <= 0] = np.nan
+                v = torch.log10(aux).cpu().numpy()
+                
+                del ys, ks, Ns, dtf, aux, mdnnxy, dexp
+                torch.cuda.empty_cache()
+            
+            else:  
+                
+                from scipy.signal import fftconvolve
+                
+                # local mean of ref-test nndist
+                aux = fftconvolve(nnxy, kernel, mode='same')
+                aux[aux < 0] = 0
+                mdnnxy = np.divide(aux, N, out=np.zeros(N.shape), 
+                                   where=(N > 0))
+                
+                # inverse of expected local ref-ref distance
+                dexp = np.sqrt((N*np.pi) / A)
+    
+                # gets (local) ratio of mean NNDists
+                v = mdnnxy * dexp
+                v[v <= 0] = np.nan
+                v = np.log10(v)
+            
+    v[~roi] = np.nan
         
     return(tofloat(v))
 

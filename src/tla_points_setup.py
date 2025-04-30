@@ -1082,7 +1082,19 @@ class Sample:
            - M ~ 0 indicates the two classes are segregated
 
         2- Nearest Neighbor Distance index: Bi-variate asymetric score between 
-           all classes ('ref' and 'test')
+           all classes ('ref' and 'test'). This index is a relative measure. 
+           It's the observed mean distance of test cells to ref cells
+           normalized by the mean distance between ref cells
+        
+           - V > 0 indicates ref and test cells are segregated
+           - V ~ 0 indicates ref and test cells are well mixed
+           - V < 0 indicates ref cells are individually infiltrated
+                   (ref cells are closer to test cells than other ref cells)
+                   
+        2- Adjusted Nearest Neighbor Distance index: Bi-variate asymetric score 
+           between all classes ('ref' and 'test'). This index is normalized by
+           the expected distance between ref cells and test cells according to 
+           the CSR null hypothesis.
         
            - V > 0 indicates ref and test cells are segregated
            - V ~ 0 indicates ref and test cells are well mixed
@@ -2111,10 +2123,10 @@ def main(args):
         import seaborn as sns
         # path of directory containing this script
         main_pth = os.path.dirname(os.getcwd())
-        f = os.path.join(main_pth, 'test_set.csv')
+        f = os.path.join(main_pth, 'DCIS.csv')
         REDO = True
         GRPH = True
-        CASE = 0    # case number to process
+        CASE = 224    # case number to process
         
     else:
         # running from the CLI, (eg. using the bash script)
