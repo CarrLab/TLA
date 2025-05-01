@@ -867,18 +867,37 @@ def nndist_norm(A, rcx, rcy=None):
     from scipy.spatial import KDTree
     
     v = 0
-    if rcy is None:
-        if (len(rcx) > 1):
-            # get mean nearest neighbor distances of ref cells with themselves
-            dnnxx, _ = KDTree(rcx).query(rcx, k=[2])
-            # gets ratio of mean NNDist
-            v = np.mean(dnnxx)/ np.sqrt(A/(len(rcx)*np.pi))
-    else:
-        if (len(rcx) > 1) and (len(rcy) > 0):
-            # get nearest neighbor distances to test cells
-            dnnxy, _ = KDTree(rcy).query(rcx, k=[1])
-            # gets ratio of mean NNDist
-            v = np.mean(dnnxy) / np.sqrt(A/(len(rcy)*np.pi))
+    if (A > 0):
+        if rcy is None:
+            if (len(rcx) > 1):
+                # get mean nearest neighbor distances of ref cells with other 
+                # ref cells...the expected value is given as the mean distance
+                # between point events: 
+                # <a> = mean area of domain of events  = A/N 
+                # <a> = \pi*<r>^2 = this is also the distance between points
+                # then E(d) = <r> = \sqrt(A/(N*\pi))
+                
+                dnnxx, _ = KDTree(rcx).query(rcx, k=[2])
+                # gets ratio of mean NNDist
+                v = np.mean(dnnxx)*np.sqrt((len(rcx)*np.pi)/A)
+        else:
+            if (len(rcx) > 1) and (len(rcy) > 0):
+                # get nearest neighbor distances to test cells is given by the
+                # mean distance of any point inside of a circe to its center
+                # (taking the circle as the typical circle of domain of test
+                #  points, and ref points located at a random location in that
+                #  circle)... this mean distance is given by the integral
+                #  a =pi<r>^2 the area of domain of test points
+                #  E(d)=(1/a)\int_0^<r>\int_0^(2\pi) R (dR)(R*d\theta) = 2<r>/3
+                # then since <r> = \sqrt(A/(N*\pi))
+                #  E(d) = (2/3)\sqrt(A/(N*/pi))
+                # the (2/3) term accounts for the fact that the distance is not
+                # measured from test point to test point, but test point to 
+                # and arbitratry other point in space (and hence ref points)
+                
+                dnnxy, _ = KDTree(rcy).query(rcx, k=[1])
+                # gets ratio of mean NNDist
+                v = np.mean(dnnxy)*np.sqrt((len(rcy)*np.pi)/A)*(3/2)
             
     if (v > 0):
         nndi = np.log10(v)
@@ -1044,7 +1063,13 @@ def nndist_norm_array(N, kernel, roi, rcx, rcy=None, cuda=False):
     if rcy is None:
         # This is the univariate case
         if (len(rcx) > 1):
-            # get mean nearest neighbor distances of ref cells with themselves
+            # get mean nearest neighbor distances of ref cells with other 
+            # ref cells...the expected value is given as the mean distance
+            # between point events: 
+            # <a> = mean area of domain of events  = A/N 
+            # <a> = \pi*<r>^2 = this is also the distance between points
+            # then E(d) = <r> = \sqrt(A/(N*\pi))
+            
             dnnxx, _ = KDTree(rcx).query(rcx, k=[2])
             # turns into array form
             nnxx = tofloat(np.zeros((N.shape[0], N.shape[1])))
@@ -1094,8 +1119,19 @@ def nndist_norm_array(N, kernel, roi, rcx, rcy=None, cuda=False):
     else:
         # This is the bivariate case
         if ((len(rcx) > 1) & (len(rcy) > 0)):
-    
-            # get nearest neighbor distances of ref cells to test cells
+            # get nearest neighbor distances to test cells is given by the
+            # mean distance of any point inside of a circe to its center
+            # (taking the circle as the typical circle of domain of test
+            #  points, and ref points located at a random location in that
+            #  circle)... this mean distance is given by the integral
+            #  a =pi<r>^2 the area of domain of test points
+            #  E(d)=(1/a)\int_0^<r>\int_0^(2\pi) R (dR)(R*d\theta) = 2<r>/3
+            # then since <r> = \sqrt(A/(N*\pi))
+            #  E(d) = (2/3)\sqrt(A/(N*/pi))
+            # the (2/3) term accounts for the fact that the distance is not
+            # measured from test point to test point, but test point to 
+            # and arbitratry other point in space (and hence ref points)
+            
             dnnxy, _ = KDTree(rcy).query(rcx, k=[1])
             # turns to array form
             nnxy = tofloat(np.zeros((N.shape[0], N.shape[1])))
@@ -1115,7 +1151,7 @@ def nndist_norm_array(N, kernel, roi, rcx, rcy=None, cuda=False):
                 mdnnxy[dtf] = aux[dtf] / Ns[dtf]
                 
                 # inverse of expected local ref-ref distance
-                dexp = torch.sqrt((Ns*np.pi)/A)
+                dexp = (3/2)*torch.sqrt((Ns*np.pi)/A)
         
                 # gets (local) ratio of mean NNDists
                 aux = mdnnxy * dexp
@@ -1136,7 +1172,7 @@ def nndist_norm_array(N, kernel, roi, rcx, rcy=None, cuda=False):
                                    where=(N > 0))
                 
                 # inverse of expected local ref-ref distance
-                dexp = np.sqrt((N*np.pi) / A)
+                dexp = (3/2)*np.sqrt((N*np.pi)/A)
     
                 # gets (local) ratio of mean NNDists
                 v = mdnnxy * dexp
