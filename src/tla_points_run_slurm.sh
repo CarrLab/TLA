@@ -23,13 +23,13 @@
 
 
 graph=""
-if [[ "$2" == "--graph" || "$3" == "--graph"]] 
+if [ $2 = "--graph" ] || [ $3 = "--graph" ] 
 then
   graph="--graph"
 fi
 
 redo=""
-if [[ "$2" == "--redo" || "$3" == "--redo"]] 
+if [ $2 = "--redo" ] || [ $3 = "--redo" ] 
 then
   redo="--redo"
 fi
