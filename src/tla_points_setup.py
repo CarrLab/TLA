@@ -1695,7 +1695,7 @@ class Sample:
         # gets kde profile of cell data
         aux = df.loc[df['class'] == tclass['class']]
         z = KDE(aux, self.imshape, self.binsiz/2, cuda=ISCUDA)
-        #z[self.roiarr==0] = np.nan
+        z[self.roiarr==0] = np.nan
         
         gamma = np.ceil(np.log10(np.nanmax(z))) + 1
         delta = np.max((np.floor(np.log10(np.nanmin(z[z > 0]))),
