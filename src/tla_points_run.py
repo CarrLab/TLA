@@ -1730,7 +1730,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
                       
             if iscoloc and isnndist:
                 
@@ -1757,7 +1758,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
                       
             if iscoloc and isnndadj:
                 
@@ -1784,7 +1786,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
             
             if isnndadj and isnndist:
                 
@@ -1811,7 +1814,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
             
             if isnndadj and isrhfunc:
                 
@@ -1838,7 +1842,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
             
             if isrhfunc and isnndist:
                 
@@ -1865,7 +1870,8 @@ class Sample:
                     plt.close()
                     
                 # concatenate correlation tables
-                corr =  pd.concat([corr, df], ignore_index=True)
+                if not df.empty:
+                    corr = pd.concat([corr, df], ignore_index=True)
             
             # saves correlations table
             corr.to_csv(fout, sep=',', index=False, header=True)
@@ -2109,9 +2115,15 @@ def lmeAdjacency(ls, classes):
         - ls: (pylandstats) landscape object
         - classes_file: (str) name of file with cell classes definitions
     """
+    
+    def tonumeric(s):
+        try:
+            return pd.to_numeric(s, errors='raise')
+        except ValueError:
+            return s
 
     # get adjacency matrix (as related to LME classes)
-    aux = ls._adjacency_df.apply(pd.to_numeric, errors='ignore')
+    aux = ls._adjacency_df.apply(tonumeric)
     adj_pairs = aux.groupby(level='class_val').sum().reset_index()
     adj_pairs = adj_pairs.loc[adj_pairs['class_val'] > 0]
     # adj_pairs = adj_pairs.drop([0], axis=1)

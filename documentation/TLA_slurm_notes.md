@@ -26,9 +26,13 @@ This are the steps to create a virtual environment and get all the required pack
 
 ```
 > mamba install -y -c torch torchvision torchaudio
-> mamba conda install -y -c conda-forge pandas matplotlib-base scipy tabulate swifter
-> mamba install -y -c conda-forge statannot rasterio openblas geopandas
-> mamba install -y -c conda-forge scikit-image scikit-learn xarray xmltodict
+> mamba install -y -c conda-forge pandas matplotlib-base 
+> mamba install -y -c conda-forge scipy tabulate 
+> mamba install -y -c conda-forge swifter
+> mamba install -y -c conda-forge statannot rasterio 
+> mamba install -y -c conda-forge openblas geopandas
+> mamba install -y -c conda-forge scikit-image scikit-learn 
+> mamba install -y -c conda-forge xarray xmltodict
 > mamba install -y -c conda-forge statsmodels seaborn pyqt
 > mamba install -y -c conda-forge pylandstats=3.1.0
 > mamba update --all
