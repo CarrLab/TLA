@@ -23,16 +23,39 @@
 
 
 graph=""
-if [ $2 = "--graph" ] || [ $3 = "--graph" ] 
+redo=""
+
+if [ "$#" -eq 0 ]
 then
-  graph="--graph"
+    echo "Error: study argument filename is required"
+    exit 0
+else
+    if [ "$#" -eq 2 ]
+    then
+        if [ $2 = "--graph" ]
+        then
+          graph="--graph"
+        fi
+        
+        if [ $2 = "--redo" ]
+        then
+          redo="--redo"
+        fi
+    fi
+    if [ "$#" -eq 3 ]
+    then
+        if [ $2 = "--graph" ] || [ $3 = "--graph" ] 
+        then
+          graph="--graph"
+        fi
+        
+        if [ $2 = "--redo" ] || [ $3 = "--redo" ] 
+        then
+          redo="--redo"
+        fi
+    fi
 fi
 
-redo=""
-if [ $2 = "--redo" ] || [ $3 = "--redo" ] 
-then
-  redo="--redo"
-fi
 
 IFS=','
 
@@ -49,9 +72,10 @@ numlines () {
 # in the data folder with (static) name "done_samples.csv"
 read name raw_path raw_samples_table raw_classes_table data_path rest < <(sed "1d" "$1")
 samples_files=$data_path/$name"_samples.csv"
-done_samples="$data_path/run_done_samples.csv"
+done_samples=$data_path/"run_done_samples.csv"
 sub_samples=$data_path/"run_sub_samples.csv"
 
+echo "===> done samples: "$done_samples
 
 if [ ! -f $done_samples ]
 then

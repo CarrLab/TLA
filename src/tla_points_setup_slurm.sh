@@ -23,15 +23,37 @@
 
 
 graph=""
-if [ $2 = "--graph" ] || [ $3 = "--graph" ] 
-then
-  graph="--graph"
-fi
-
 redo=""
-if [ $2 = "--redo" ] || [ $3 = "--redo" ] 
+
+if [ "$#" -eq 0 ]
 then
-  redo="--redo"
+    echo "Error: study argument filename is required"
+    exit 0
+else
+    if [ "$#" -eq 2 ]
+    then
+        if [ $2 = "--graph" ]
+        then
+          graph="--graph"
+        fi
+        
+        if [ $2 = "--redo" ]
+        then
+          redo="--redo"
+        fi
+    fi
+    if [ "$#" -eq 3 ]
+    then
+        if [ $2 = "--graph" ] || [ $3 = "--graph" ] 
+        then
+          graph="--graph"
+        fi
+        
+        if [ $2 = "--redo" ] || [ $3 = "--redo" ] 
+        then
+          redo="--redo"
+        fi
+    fi
 fi
 
 

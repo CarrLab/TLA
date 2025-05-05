@@ -101,14 +101,14 @@ class Study:
         
         # list of samples is read from 'tla_sub_samples.csv' if it exist, 
         # otherwise reads directly from the original list for the study 
-        f = os.path.join(self.dat_pth, 'tla_sub_samples.csv')
+        f = os.path.join(self.dat_pth, 'run_sub_samples.csv')
         if not os.path.exists(f):
             f = filexists(os.path.join(self.dat_pth, 
                                        study['name'] + '_samples.csv'))
         self.samples = pd.read_csv(f)    
         
         # list of processed samples
-        self.done_list = os.path.join(self.dat_pth, 'tla_done_samples.csv')
+        self.done_list = os.path.join(self.dat_pth, 'run_done_samples.csv')
                  
         # scale parameters
         self.factor = tofloat(1.0)
@@ -1651,10 +1651,16 @@ class Sample:
                     comps = df.loc[df['name'] == 'rhfunc']['comps'].values[0]
                     rhfunc_comps = [(cases.index(c[0]), 
                                      cases.index(c[1])) for c in comps]
+                    
+            corrdtypes = {'factor_i': str,
+                          'comp_i': str,
+                          'factor_j': str, 
+                          'comp_j': str,
+                          'pearson_cor': float,
+                          'p_value:': float}
               
-            corr = pd.DataFrame(columns = ['factor_i', 'comp_i', 
-                                           'factor_j', 'comp_j',
-                                           'pearson_cor', 'p_value:'])
+            corr = pd.DataFrame(columns = corrdtypes.keys()).astype(corrdtypes)
+            
             colocarr = []
             nndistarr = []
             nndadjarr = []
@@ -1731,6 +1737,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
                       
             if iscoloc and isnndist:
@@ -1759,6 +1766,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
                       
             if iscoloc and isnndadj:
@@ -1787,6 +1795,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
             
             if isnndadj and isnndist:
@@ -1815,6 +1824,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
             
             if isnndadj and isrhfunc:
@@ -1843,6 +1853,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
             
             if isrhfunc and isnndist:
@@ -1871,6 +1882,7 @@ class Sample:
                     
                 # concatenate correlation tables
                 if not df.empty:
+                    df = df.astype(corrdtypes)
                     corr = pd.concat([corr, df], ignore_index=True)
             
             # saves correlations table
