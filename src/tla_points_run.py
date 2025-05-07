@@ -105,7 +105,7 @@ class Study:
         if not os.path.exists(f):
             f = filexists(os.path.join(self.dat_pth, 
                                        study['name'] + '_samples.csv'))
-        self.samples = pd.read_csv(f)    
+        self.samples = pd.read_csv(f, na_filter=False) 
         
         # list of processed samples
         self.done_list = os.path.join(self.dat_pth, 'run_done_samples.csv')
@@ -519,18 +519,23 @@ class Sample:
                             # Nearest Neighbor Distance index (bivariate)
                             D = nndist_array(N[:, :, xi], gker, roi,
                                              rcx, rcy, cuda=ISCUDA)
-                            # Adj Nearest Neighbor Distance index (bivariate)
-                            B =  nndist_norm_array(N[:, :, xi], gker, roi,
-                                             rcx, rcy,  cuda=ISCUDA)
                         else:
                             # Nearest Neighbor Distance index (identity)
                             D = 1.0*(N[:, :, xi] > 0)
                             D[~roi] = np.nan
+                            
+                        nndistarr[:, :, nndist_comps.index(comp)] = D
+                    
+                    if (comp in nndadj_comps):
+                        if (comp[0] != comp[1]):
+                            # Adj Nearest Neighbor Distance index (bivariate)
+                            B =  nndist_norm_array(N[:, :, xi], gker, roi,
+                                             rcx, rcy=rcy, cuda=ISCUDA)
+                        else:
                             # Adj Nearest Neighbor Distance index (identity)
                             B =  nndist_norm_array(N[:, :, xi], gker, roi,
                                              rcx, cuda=ISCUDA)
                             
-                        nndistarr[:, :, nndist_comps.index(comp)] = D
                         nndadjarr[:, :, nndadj_comps.index(comp)] = B
                     
                     if (comp in aefunc_comps):
@@ -1905,7 +1910,7 @@ class Sample:
         
             lme_pth = mkdirs(os.path.join(self.res_pth, 'lmes'))
             
-            aux = self.lmearr.copy().astype(int)
+            aux = np.array(self.lmearr.copy()).astype(int)
             
             # create pylandscape object and assing to landscape
             self.plsobj = pls.Landscape(aux, res=(1, 1), 
@@ -2923,6 +2928,9 @@ def plotPatchHists(sid, df, res_pth):
 
         mif = np.log10(np.min(df.area_fraction))
         maf = np.log10(np.max(df.area_fraction))
+        if (maf == mif):
+            mif = mif*0.5
+            maf = maf*1.5
         dat = df.loc[df['LME'] == lme].area_fraction.apply(np.log10)
         hist, bins = np.histogram(dat,
                                   bins=np.arange(mif,
@@ -2934,6 +2942,9 @@ def plotPatchHists(sid, df, res_pth):
 
         mir = np.log10(np.min(df.perimeter_area_ratio))
         mar = np.log10(np.max(df.perimeter_area_ratio))
+        if (mar == mir):
+            mir = mir*0.5
+            mar = mar*1.5
         dat = df.loc[df['LME'] == lme].perimeter_area_ratio.apply(np.log10)
         hist, bins = np.histogram(dat,
                                   bins=np.arange(mir,
@@ -2945,11 +2956,12 @@ def plotPatchHists(sid, df, res_pth):
 
         mis = np.log10(np.min(df.shape_index))
         mas = np.log10(np.max(df.shape_index))
+        if (mas == mis):
+            mis = mis*0.5
+            mas = mas*1.5
         dat = df.loc[df['LME'] == lme].shape_index.apply(np.log10)
         hist, bins = np.histogram(dat,
-                                  bins=np.arange(mis,
-                                                 mas,
-                                                 (mas-mis)/21),
+                                  bins=np.arange(mis, mas, (mas-mis)/21),
                                   density=False)
 
         x = (bins[1:] + bins[:-1]) / 2
@@ -2957,12 +2969,13 @@ def plotPatchHists(sid, df, res_pth):
 
         mie = np.log10(np.min(df.euclidean_nearest_neighbor))
         mae = np.log10(np.max(df.euclidean_nearest_neighbor))
+        if (mae == mie):
+            mie = mie*0.5
+            mae = mae*1.5
         aux = df.loc[df['LME'] == lme]
         dat = aux.euclidean_nearest_neighbor.apply(np.log10)
         hist, bins = np.histogram(dat,
-                                  bins=np.arange(mie,
-                                                 mae,
-                                                 (mae-mie)/21),
+                                  bins=np.arange(mie, mae, (mae-mie)/21),
                                   density=False)
         x = (bins[1:] + bins[:-1])/2
         axs[1, 1].plot(x, hist, label=lab[i], color=col[i])
@@ -3240,10 +3253,10 @@ def main(args):
         # running from the IDE
         # path of directory containing this script
         main_pth = os.path.dirname(os.getcwd())
-        f = os.path.join(main_pth, 'test_set.csv')
+        f = os.path.join(main_pth, 'DCIS.csv')
         REDO = True
         GRPH = True
-        CASE = 1
+        CASE = 3
     else:
         # running from the CLI using the bash script
         # path to working directory (above /scripts)
@@ -3295,6 +3308,10 @@ def main(args):
                                    do_plots=GRPH)
         progress.dostep(debug, 'NNDist Stats calculated')
         
+        # STEP 4: NNDadj stats
+        sample.plotNNDadjLandscape(REDO, study.analyses, [-2.5, 2.5], 
+                                   do_plots=GRPH)
+        progress.dostep(debug, 'NNDadj Stats calculated')
         
         # STEP 5: RHFunc stats        
         sample.plotRHFuncLandscape(REDO,  study.analyses, [-1.5, 1.5], 
@@ -3328,6 +3345,13 @@ def main(args):
                 for i, comp in enumerate(comps):
                     sample.plotNNDistLandscape_simple(i, comps,
                                                     'NND index', [-2.5, 2.5])
+                    
+            if ~df.loc[df['name'] == 'nndadj']['drop'].values[0]:
+                comps = list(df.loc[df['name'] == 'nndadj'].comps.values[0])
+                for i, comp in enumerate(comps):
+                    sample.plotNNDadjLandscape_simple(i, comps,
+                                                    'NNDadj index', 
+                                                    [-2.5, 2.5])
             
             if ~df.loc[df['name'] == 'rhfunc']['drop'].values[0]:
                 comps = list(df.loc[df['name'] == 'rhfunc'].comps.values[0])
