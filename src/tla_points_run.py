@@ -2929,8 +2929,12 @@ def plotPatchHists(sid, df, res_pth):
         mif = np.log10(np.min(df.area_fraction))
         maf = np.log10(np.max(df.area_fraction))
         if (maf == mif):
-            mif = mif*0.5
-            maf = maf*1.5
+            if (mif==0):
+                mif = 0
+                maf = 1
+            else:
+                mif = mif*0.5
+                maf = maf*1.5
         dat = df.loc[df['LME'] == lme].area_fraction.apply(np.log10)
         hist, bins = np.histogram(dat,
                                   bins=np.arange(mif,
@@ -2943,8 +2947,12 @@ def plotPatchHists(sid, df, res_pth):
         mir = np.log10(np.min(df.perimeter_area_ratio))
         mar = np.log10(np.max(df.perimeter_area_ratio))
         if (mar == mir):
-            mir = mir*0.5
-            mar = mar*1.5
+            if (mir==0):
+                mir = 0
+                mar = 1
+            else:
+                mir = mir*0.5
+                mar = mar*1.5
         dat = df.loc[df['LME'] == lme].perimeter_area_ratio.apply(np.log10)
         hist, bins = np.histogram(dat,
                                   bins=np.arange(mir,
@@ -2957,8 +2965,12 @@ def plotPatchHists(sid, df, res_pth):
         mis = np.log10(np.min(df.shape_index))
         mas = np.log10(np.max(df.shape_index))
         if (mas == mis):
-            mis = mis*0.5
-            mas = mas*1.5
+            if (mis==0):
+                mif = 0
+                mas = 1
+            else:
+                mis = mis*0.5
+                mas = mas*1.5
         dat = df.loc[df['LME'] == lme].shape_index.apply(np.log10)
         hist, bins = np.histogram(dat,
                                   bins=np.arange(mis, mas, (mas-mis)/21),
@@ -2970,8 +2982,12 @@ def plotPatchHists(sid, df, res_pth):
         mie = np.log10(np.min(df.euclidean_nearest_neighbor))
         mae = np.log10(np.max(df.euclidean_nearest_neighbor))
         if (mae == mie):
-            mie = mie*0.5
-            mae = mae*1.5
+            if (mie==0):
+                mie = 0
+                maf = 1
+            else:
+                mie = mie*0.5
+                mae = mae*1.5
         aux = df.loc[df['LME'] == lme]
         dat = aux.euclidean_nearest_neighbor.apply(np.log10)
         hist, bins = np.histogram(dat,
