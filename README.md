@@ -130,31 +130,71 @@ Each TLA module has a separate Python scripts that can be run without using the 
 A simple option is to run the TLA scripts directly from python. These actions should be platform independent. See python scripts section in [documentation](documentation/TLA_doc.md) for instructions.
 
 
-## File structure:
+## TLA filetree structure:
 
+
+```
 ├── README.md  
+├── TLA_points.sh  
+├── TLA_regions.sh  
+├── tlaenv.yml 
 ├── documentation/  
-│   ├── TLA\_doc.md  
-│   ├── TLA\_use.md  
-│   └── TLA\_slurm\_notes.md  
+│   ├── TLA_doc.md  
+│   ├── TLA_use.md  
+│   ├── TLA_slurm_notes.md  
+│   └── *.png
 ├── src/  
-│   ├── tla\_functions.py  
-|   ├── tla\_points\_\*.py    
-│   ├── tla\_points\_\*.sh   
-│   └── tla\_regions\_\*.py  
-│   └── tla\_regions\_\*.sh   
-├── TLA\_points.sh  
-├── TLA\_regions.sh  
-├── tlaenv.yml  
-├── test\_set/  
+│   ├── tla_functions.py  
+│   ├── tla_slide_splits.py
+|   ├── tla_points_setup.py  
+│   ├── tla_points_setup_slurm.sh 
+│   ├── tla_points_setup_sbatch.sh 
+│   ├── tla_points_setup_loop.sh 
+|   ├── tla_points_setup_sum.py  
+│   ├── tla_points_setup_sum_slurm.sh 
+│   ├── tla_points_setup_sum_sbatch.sh 
+│   ├── tla_points_setup_sum_loop.sh 
+|   ├── tla_points_run.py  
+│   ├── tla_points_run_slurm.sh 
+│   ├── tla_points_run_sbatch.sh 
+│   ├── tla_points_run_loop.sh 
+|   ├── tla_points_run_sum.py   
+│   ├── tla_points_run_sum_slurm.sh 
+│   ├── tla_points_run_sum_sbatch.sh 
+│   ├── tla_points_run_sum_loop.sh 
+|   ├── tla_points_ssh.py  
+│   ├── tla_points_ssh_slurm.sh 
+│   ├── tla_points_ssh_sbatch.sh 
+│   ├── tla_points_ssh_loop.sh   
+│   ├── tla_regions_run.py
+│   ├── tla_regions_run_slurm.sh 
+│   ├── tla_regions_run_sbatch.sh 
+│   ├── tla_regions_run_loop.sh   
+│   └── tla_regions_sum.py
+│   ├── tla_regions_sum_slurm.sh 
+│   ├── tla_regions_sum_sbatch.sh 
+│   ├── tla_regions_sum_loop.sh    
+├── test_set/  
 │   ├── raw_data/  
-│   │   ├── cellPos/  
+│   │   ├── cellPos/ 
+|   |   |   └── *.csv
 │   │   ├── images/  
-│   │   ├── masks/   
+|   |   |   └── *.jpg
+│   │   ├── masks/  
+|   |   |   └── *.jpg 
 │   │   └── rois/  
-│   └── \*.csv  
-├── test\_set\_reg/  
-│   ├── data/  
-│   │   ├── rasters/  
-│   │   ├── results/  
-│   │   └── \*.csv  
+|   |       └── *.npz
+│   ├── raw_samples.csv  
+|   └── raw_classes.csv
+├── test_set_reg/  
+│   ├── raw_data/  
+│   │   ├── cellPos/ 
+|   |   |   └── *.csv
+│   │   ├── regions/  
+|   |   |   └── *.npy
+│   │   └── rois/  
+|   |       └── *.npz
+│   ├── raw_samples.csv  
+│   ├── raw_reg_classes.csv 
+|   └── raw_classes.csv
+```
