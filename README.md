@@ -2,7 +2,7 @@
  
 ### Landscape ecology analysis methods for the investigation and characterization of digital histopathological data of tumor biopsies.
 
-Landscape ecology is the study of relationships between populations of living organisms interacting among themselves and with the environment they inhabit. Such an environment is defined as a __landscape__ (spread in space and time) occupied by different species of organisms, and its description entails details on their spatial distributions, cohabitation, landscape morpholoy, configuration, composition and fragmentation in relation to the population dynamics, mobility and other ecological effects. Our goal is to implement these methodologies in the study of tissues, perceived as cellular ecologies in the context of tumor development, and observed by means of digital histopathological samples.
+Landscape ecology is the study of relationships between populations of living organisms interacting among themselves and with the environment they inhabit. Such an environment is defined as a __landscape__ (spread in space and time) occupied by different species of organisms, and its description entails details on their spatial distributions, cohabitation, landscape morphology, configuration, composition and fragmentation in relation to the population dynamics, mobility and other ecological effects. Our goal is to implement these methodologies in the study of tissues, perceived as cellular ecologies in the context of tumor development, and observed by means of digital histopathological samples.
 
 __TLA__ is a toolbox composed of a large set of spatial statistics, implementing functions from the landscape ecology package [pylandstats](https://github.com/martibosch/pylandstats), astronomical and GIS spatial statistics ([astropy](https://www.astropy.org/), [pysal](https://pysal.org/esda/index.html)), spatial stratified heterogeneity ([geodetector](https://cran.r-project.org/web/packages/geodetector/vignettes/geodetector.html)) and image processing methodologies ([scipy](https://scipy.org/), [scikit-image](https://scikit-image.org/)).
 
@@ -128,3 +128,33 @@ Each TLA module has a separate Python scripts that can be run without using the 
 * [How to Enable Bash in Windows 10](https://linuxhint.com/enable-bash-windows-10/)
 
 A simple option is to run the TLA scripts directly from python. These actions should be platform independent. See python scripts section in [documentation](documentation/TLA_doc.md) for instructions.
+
+
+## File structure:
+
+├── README.md  
+├── documentation/  
+│   ├── TLA\_doc.md  
+│   ├── TLA\_use.md  
+│   └── TLA\_slurm\_notes.md  
+├── src/  
+│   ├── tla\_functions.py  
+|   ├── tla\_points\_\*.py    
+│   ├── tla\_points\_\*.sh   
+│   └── tla\_regions\_\*.py  
+│   └── tla\_regions\_\*.sh   
+├── TLA\_points.sh  
+├── TLA\_regions.sh  
+├── tlaenv.yml  
+├── test\_set/  
+│   ├── raw_data/  
+│   │   ├── cellPos/  
+│   │   ├── images/  
+│   │   ├── masks/   
+│   │   └── rois/  
+│   └── \*.csv  
+├── test\_set\_reg/  
+│   ├── data/  
+│   │   ├── rasters/  
+│   │   ├── results/  
+│   │   └── \*.csv  

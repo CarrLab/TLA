@@ -26,9 +26,9 @@ This allows for calculating full resolution fields in a computationally efficien
 
 ### 1. First-order metrics:
 
-These are conformation measurements that account for the intensity of events of each type. They involve __total numbers of cells of each type, total density of cells of each type, and fractions of the total of cell of each type__. In cases where an at hoc filter mask is available, these values are accounted for each region of interest (as specified by said filter).
+These are conformation measurements that account for the intensity of events of each type. They involve __total numbers of cells of each type, total density of cells of each type, and fractions of the total of cell of each type__. In cases where an ad hoc filter mask is available, these values are accounted for each region of interest (as specified by said filter).
 
-Local profiles of these measures are calculated by the use of a __Kernel Density Estimator (KDE)__, a spatial Gaussian convolution of discrete point events that estimates local, and smooth, point density values for each cell type, of combination of cell types.  
+Local profiles of these measures are calculated by the use of a __Kernel Density Estimator (KDE)__, a spatial Gaussian convolution of discrete point events that estimates local, and smooth, point density values for each cell type, or combination of cell types.  
 
 ### 2. Colocalization index
 
@@ -182,7 +182,7 @@ In what follows we refer to the following notation:
 Six basic distribution metrics are calculated across patches (and done at the class-level or landscape-level):
 
 1.	__Mean__: specified by the suffix `_mn` to the method name, e.g. `area_mn`. 
-2.	__Area-weighted mean__, specified by the suffix `_am` to the method name, e.g. `area_am`. This is the mean value weighted by the path size.
+2.	__Area-weighted mean__, specified by the suffix `_am` to the method name, e.g. `area_am`. This is the mean value weighted by the patch size.
 3.	__Median__, specified by the suffix `_md` to the method name, , e.g. `area_md`. 
 4.	__Range__, specified by the suffix `_ra` to the method name,  e.g. `area_ra`.
 5.	__Standard deviation__, specified by the suffix `_sd` to the method name,  e.g. `area_sd`
@@ -227,7 +227,7 @@ _{X<sub>1</sub>, X<sub>2</sub>}_ have an interactive influence on a factor _Y_. 
    
 ### 3. SSH Risk detector
 
-This function calculates the average values in each stratum of the explanatory variable _X_, and reports if a significant difference between any two strata levels exists, indicating that the factor is a risk factor for the stratification structure. It outputs means of explained variable in each stratum and the t-test for differences every pair of strata (with the corresponding multiple comparison correction for p-values)
+This function calculates the average values in each stratum of the explanatory variable _X_, and reports if a significant difference between any two strata levels exists, indicating that the factor is a risk factor for the stratification structure. It outputs means of explained variable in each stratum and the t-test for differences between every pair of strata (with the corresponding multiple comparison correction for p-values)
 
 ### 4. SSH Ecological detector
 
