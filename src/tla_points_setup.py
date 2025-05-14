@@ -104,7 +104,6 @@ class Study:
         f = filexists(os.path.join(self.raw_path, study['raw_samples_table']))
         
         self.samples = pd.read_csv(f)
-        self.samples.fillna('', inplace=True)
 
         # sets path for processed data
         self.dat_path = mkdirs(os.path.join(pth, study['data_path']))
@@ -118,6 +117,18 @@ class Study:
             self.factor = study['factor']
         self.scale = tofloat(study['scale']/self.factor)
         self.units = study['units']
+        
+        if 'image_file' in self.samples:
+            aux = self.samples.image_file.astype(str)
+            self.samples.image_file = aux.str.replace('nan', '', regex=False)
+        else:
+            self.samples.image_file = ''
+            
+        if 'mask_file' in study:
+            aux = self.samples.mask_file.astype(str)
+            self.samples.image_file = aux.str.replace('nan', '', regex=False)
+        else:
+            self.samples.mask_file = ''
 
         # the size of quadrats (to pixels as multiple of 10) (long scale)
         aux = np.rint(10*np.ceil((study['binsiz']/self.scale)/10))

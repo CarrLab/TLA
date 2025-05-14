@@ -83,7 +83,6 @@ class Study:
         f = filexists(os.path.join(self.raw_path, study['raw_samples_table']))
         
         self.samples = pd.read_csv(f)
-        self.samples.fillna('', inplace=True)
 
         # sets path for processed data
         self.dat_path = mkdirs(os.path.join(pth, study['data_path']))
@@ -100,6 +99,18 @@ class Study:
         self.reg_factor = 4.0
         if 'reg_factor' in study:
             self.reg_factor = study['reg_factor']
+            
+        if 'image_file' in self.samples:
+            aux = self.samples.image_file.astype(str)
+            self.samples.image_file = aux.str.replace('nan', '', regex=False)
+        else:
+            self.samples.image_file = ''
+            
+        if 'mask_file' in study:
+            aux = self.samples.mask_file.astype(str)
+            self.samples.image_file = aux.str.replace('nan', '', regex=False)
+        else:
+            self.samples.mask_file = ''
 
         # the size of quadrats (to pixels as multiple of 10) (long scale)
         aux = np.rint(10*np.ceil((study['binsiz']/self.scale)/10))
@@ -1297,10 +1308,10 @@ def main(args):
         import seaborn as sns
         # path of directory containing this script
         main_pth = os.path.dirname(os.getcwd())
-        f = os.path.join(main_pth, 'pathAI.csv')
+        f = os.path.join(main_pth, 'test_set_reg.csv')
         REDO = True
         GRPH = True
-        CASE = 490   # case number to process
+        CASE = 0   # case number to process
 
     else:
         # running from the CLI, (eg. using the bash script)
@@ -1319,7 +1330,6 @@ def main(args):
 
     # NOTE: only the FIRST line in the argument table will be used
     study = Study(pd.read_csv(argsfile).iloc[0], main_pth)
-
 
     # STEP 1: create slide object
     slide = Slide(CASE, study)
